@@ -1,0 +1,6 @@
+USER=root
+PROGRAM=/usr/bin/podspawn.sh
+SESSION=false
+FALLBACK=false
+KEEP_ENV_VARS=COLUMNS,SSH_AUTH_SOCK
+BANNER=You are not in the `podspawn` group

@@ -1,0 +1,13 @@
+Source: podspawn
+Section: admin
+Priority: optional
+Maintainer: Zolotopupov Volodymyr <zvova7890@gmail.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.0
+Homepage: https://github.com/zvova7890/podspawn
+
+Package: podspawn
+Architecture: all
+Depends: podman, usermode, systemd-container, ${misc:Depends}
+Description: Mock alternative based on OCI
+ A wrapper around podman and systemd-nspawn to run OCI images in a chroot-like way.
