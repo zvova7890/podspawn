@@ -1,0 +1,74 @@
+name: Build and Publish Deb Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-deb:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            debhelper \
+            devscripts \
+            dh-make \
+            fakeroot \
+            lintian \
+            dpkg-dev
+
+      - name: Set package version
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Package version: $VERSION"
+
+      - name: Build deb package
+        run: |
+          # If you have a debian/ directory with package metadata
+          dpkg-buildpackage -us -uc -b
+
+          # Move built packages to a directory inside the workspace
+          mkdir -p deb-packages
+          mv ../*.deb deb-packages/ || true
+          mv ../*.changes deb-packages/ || true
+          mv ../*.buildinfo deb-packages/ || true
+
+      - name: Run lintian
+        run: |
+          lintian deb-packages/*.deb || true
+        continue-on-error: true
+
+      - name: List built packages
+        run: |
+          ls -lh deb-packages/
+          dpkg-deb --info deb-packages/*.deb
+
+      - name: Upload deb packages as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-packages-ubuntu-24.04
+          path: deb-packages/*.deb
+          if-no-files-found: error
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: deb-packages/*.deb
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
