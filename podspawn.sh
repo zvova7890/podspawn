@@ -187,7 +187,7 @@ Examples:
   # Force re-pull and init
   $0 init --force alpine:3.20
 
-For more information, visit: https://github.com/yourusername/podspawn
+For more information, visit: https://github.com/zvova7890/podspawn
 EOF
 }
 
