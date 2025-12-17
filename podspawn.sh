@@ -630,10 +630,7 @@ cmd_cp() {
 cmd_mount() {
   local container="$1"
   resolve_container "$container"
-  if ! is_something_mounted; then
-    msg "Container not mounted, initializing..."
-    init_rootfs
-  fi
+  is_inited || die "Not initialized. Use 'init' first"
   echo "$ROOTFS_DIR"
 }
 
