@@ -311,6 +311,8 @@ check_bind_mount_safety() {
 
 # ---------- config ----------
 config_save() {
+  mkdir -p "$META_DIR"
+  chown root:podspawn "$PODSPAWN_DIR" "$META_DIR" 2>/dev/null || true
   {
     echo "REF=$SRC_REF"
     echo "USER=$1"
@@ -366,9 +368,6 @@ setup_layout() {
   META_DIR="${PODSPAWN_DIR%/}/$CONTAINER_NAME"
   ROOTFS_DIR="$META_DIR/rootfs"
   CONFIG_FILE="$META_DIR/config"
-
-  mkdir -p "$META_DIR"
-  chown root:podspawn "$PODSPAWN_DIR" "$META_DIR" 2>/dev/null || true
 
   (( PODSPAWN_QUIET>0 )) || {
     echo ">> NAME      : $CONTAINER_NAME"
