@@ -283,19 +283,28 @@ check_bind_mount_safety() {
     die "Bind mount source does not exist: $host_path"
   fi
   
-  # Check write permission as the ORIGINAL USER, not as root
-  # This prevents users from mounting files they don't have access to
+  # Check access as the ORIGINAL USER, not as root.
+  # Read-only binds only need read permission; writable binds require write permission.
+  local access_flag="-w"
+  local access_desc="write"
+  if [[ "$mode" == "ro" ]]; then
+    access_flag="-r"
+    access_desc="read"
+  fi
+
   if [[ -n "${USERHELPER_UID:-}" ]]; then
     local gid="${USERHELPER_GID:-$(id -g "$USERHELPER_UID" 2>/dev/null || echo "$USERHELPER_UID")}"
     # Test as the original user using setpriv
-    if ! setpriv --reuid="$USERHELPER_UID" --regid="$gid" --clear-groups test -w "$host_path" 2>/dev/null; then
-      die "No write permission to bind mount source: $host_path (checked as UID ${USERHELPER_UID})"
+    if ! setpriv --reuid="$USERHELPER_UID" --regid="$gid" --clear-groups test "$access_flag" "$host_path" 2>/dev/null; then
+      die "No ${access_desc} permission to bind mount source: $host_path (checked as UID ${USERHELPER_UID})"
     fi
   else
-    # Running directly as root - still require write permission
-    # This prevents accidentally mounting read-only filesystems
-    if [[ ! -w "$host_path" ]]; then
-      die "No write permission to bind mount source: $host_path"
+    # Running directly as root - still require source access that matches the mount mode.
+    if [[ "$access_flag" == "-r" ]]; then
+      [[ -r "$host_path" ]] || die "No ${access_desc} permission to bind mount source: $host_path"
+    else
+      # This prevents accidentally mounting read-only filesystems as writable.
+      [[ -w "$host_path" ]] || die "No ${access_desc} permission to bind mount source: $host_path"
     fi
   fi
 }
