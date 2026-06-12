@@ -41,7 +41,7 @@ set -euo pipefail
 #   - Testing or development in an image without a complex container lifecycle
 #   - Reusing Podman's image handling while keeping nspawn's runtime flexibility
 
-VERSION="1.0.0"
+VERSION="1.0.1"
 
 # ---------- globals ----------
 PODSPAWN_DIR=${VAR_LIB_DIR:-/var/lib/podspawn}
