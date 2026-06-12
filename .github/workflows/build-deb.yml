@@ -33,9 +33,22 @@ jobs:
       - name: Set package version
         id: version
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Package version: $VERSION"
+          VERSION=${GITHUB_REF_NAME#v}
+          SCRIPT_VERSION=$(sed -n 's/^VERSION="\([^"]*\)"$/\1/p' podspawn.sh)
+          PACKAGE_VERSION=$(dpkg-parsechangelog -S Version)
+          PACKAGE_UPSTREAM_VERSION=${PACKAGE_VERSION%-*}
+
+          if [[ "$SCRIPT_VERSION" != "$VERSION" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match podspawn.sh version $SCRIPT_VERSION"
+            exit 1
+          fi
+          if [[ "$PACKAGE_UPSTREAM_VERSION" != "$VERSION" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match Debian package version $PACKAGE_VERSION"
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Package version: $PACKAGE_VERSION"
 
       - name: Build deb package
         run: |

@@ -134,6 +134,25 @@ docker run --privileged --cgroupns=private ...
 
 The `--privileged` flag is needed for mounting operations, and `--cgroupns=private` ensures systemd-nspawn works correctly.
 
+## Releasing
+
+Create a release commit and matching annotated tag with:
+
+```bash
+scripts/release.sh 1.2.3
+git push origin HEAD v1.2.3
+```
+
+An optional second argument sets the Debian changelog and tag message:
+
+```bash
+scripts/release.sh 1.2.3 "Add support for example images"
+```
+
+The release script updates the version in `podspawn.sh` and
+`debian/changelog`. The tag workflow verifies both versions against the tag
+before building and publishing the Debian package.
+
 ## Comparison
 
 | Feature | podspawn | Podman | Buildah |
