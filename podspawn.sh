@@ -692,9 +692,21 @@ run_in_container() {
   local chdir_args=()
   [[ -n "$PODSPAWN_WORKDIR" ]] && chdir_args+=( --chdir="$PODSPAWN_WORKDIR" )
 
+  # systemd 261 introduced a warning when no address-family policy is specified.
+  # Explicitly retain the historical unrestricted behavior without breaking
+  # older versions that do not support the opt-out option.
+  local address_family_args=()
+  local nspawn_version
+  nspawn_version=$(systemd-nspawn --version)
+  if [[ "$nspawn_version" =~ ^systemd[[:space:]]+([0-9]+) ]] &&
+     (( 10#${BASH_REMATCH[1]} >= 261 )); then
+    address_family_args+=( --restrict-address-families= )
+  fi
+
   exec systemd-nspawn -q -D "$ROOTFS_DIR" -u "$uid_in" \
     --register=no --resolv-conf=copy-host --timezone=off --keep-unit \
-    "${hn_args[@]}" "${binds[@]}" "${eph[@]}" "${chdir_args[@]}" "${env_args[@]}" "${PODSPAWN_EXTRA[@]}" \
+    "${hn_args[@]}" "${binds[@]}" "${eph[@]}" "${chdir_args[@]}" "${env_args[@]}" \
+    "${address_family_args[@]}" "${PODSPAWN_EXTRA[@]}" \
     -- "$@"
 }
 
