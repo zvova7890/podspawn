@@ -230,6 +230,27 @@ ref_parse() {
 sanitize() { echo "$1" | sed 's/[^A-Za-z0-9_.-]/_/g'; }
 tag_from_digest() { echo "sha-${1#sha256:}" | cut -c1-22; }
 
+machine_name_from_container() {
+  local source="$1" name hash
+
+  # nspawn machine names follow hostname syntax, while podspawn container
+  # names also permit characters such as underscores. Keep the name readable
+  # and add a hash whenever normalization is needed to avoid collisions.
+  name=$(printf '%s' "$source" |
+    sed 's/[^A-Za-z0-9.-]/-/g; s/^[.-]*//; s/[.-]*$//')
+  [[ -n "$name" ]] || name="podspawn"
+
+  if [[ "$name" != "$source" || ${#name} -gt 64 ]]; then
+    hash=$(printf '%s' "$source" | sha256sum)
+    hash=${hash%% *}
+    name=${name:0:51}
+    name=${name%[-.]}
+    name="${name}-${hash:0:12}"
+  fi
+
+  printf '%s\n' "$name"
+}
+
 # ---------- bind mount security ----------
 check_bind_mount_safety() {
   local spec="$1"
@@ -682,9 +703,10 @@ run_in_container() {
   done
 
   local hn_args=()
+  local machine_name="${PODSPAWN_MACHINE:-$(machine_name_from_container "$CONTAINER_NAME")}"
+  hn_args+=( --machine "$machine_name" )
   [[ -n "$PODSPAWN_HOSTNAME" ]] && hn_args+=( --hostname "$PODSPAWN_HOSTNAME" )
-  [[ -n "$PODSPAWN_MACHINE"  ]] && hn_args+=( --machine  "$PODSPAWN_MACHINE" )
-  [[ ${#hn_args[@]} -eq 0 ]] && hn_args+=( --hostname "$(hostname)" )
+  [[ -z "$PODSPAWN_HOSTNAME" && -z "$PODSPAWN_MACHINE" ]] && hn_args+=( --hostname "$(hostname)" )
 
   local eph=()
   (( PODSPAWN_EPHEMERAL )) && eph+=( --ephemeral )
