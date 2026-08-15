@@ -6,6 +6,16 @@ case "$1" in
         if ! getent group podspawn >/dev/null; then
             addgroup --system podspawn
         fi
+
+        cat >&2 <<'EOF'
+
+podspawn requires users to be members of the "podspawn" group.
+Add each user who should be allowed to run podspawn with:
+
+    sudo usermod --append --groups podspawn <username>
+
+The user must log out and back in for the new group membership to take effect.
+EOF
     ;;
 esac
 
