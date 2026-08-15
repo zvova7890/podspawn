@@ -135,7 +135,7 @@ Shell/Exec Options:
   --bind H:C[:mode]      Bind mount host:container (mode: rw|ro)
   --ephemeral            Use nspawn --ephemeral (changes not persisted)
   --hostname NAME        Set container hostname
-  --machine NAME         Set nspawn machine name
+  --machine NAME         Set nspawn machine name (default: container name)
   --user UID             Run as specific user (default: container's USER)
   --root                 Run as root (UID 0)
   -w, --workdir PATH     Working directory inside container
