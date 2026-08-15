@@ -273,31 +273,36 @@ check_bind_mount_safety() {
   # Expand to absolute path
   host_path="$(realpath -m "$host_path" 2>/dev/null || echo "$host_path")"
   
-  # Critical system directories that should NEVER be mounted (even read-only)
-  # Reading /etc/shadow, /root/.ssh, etc. is a security risk
-  local forbidden_dirs=(
-    "/"
-    "/bin"
-    "/boot"
-    "/dev"
-    "/etc"
-    "/lib"
-    "/lib64"
-    "/proc"
-    "/root"
-    "/sbin"
-    "/sys"
-    "/usr"
-    "/var/lib/podman"
-    "/var/lib/containers"
-    "/var/lib/systemd"
-  )
-  
-  for forbidden in "${forbidden_dirs[@]}"; do
-    if [[ "$host_path" == "$forbidden" ]] || [[ "$host_path" == "$forbidden/"* ]]; then
-      die "Refusing to mount system directory: $host_path (security policy)"
-    fi
-  done
+  # Protect delegated non-root callers from exposing sensitive host paths to a
+  # container. Direct root callers retain normal root authority and may bind
+  # these paths intentionally.
+  local caller_uid="${USERHELPER_UID:-$EUID}"
+  if [[ "$caller_uid" != 0 ]]; then
+    local forbidden_dirs=(
+      "/"
+      "/bin"
+      "/boot"
+      "/dev"
+      "/etc"
+      "/lib"
+      "/lib64"
+      "/proc"
+      "/root"
+      "/sbin"
+      "/sys"
+      "/usr"
+      "/var/lib/podman"
+      "/var/lib/containers"
+      "/var/lib/systemd"
+    )
+
+    local forbidden
+    for forbidden in "${forbidden_dirs[@]}"; do
+      if [[ "$host_path" == "$forbidden" ]] || [[ "$host_path" == "$forbidden/"* ]]; then
+        die "Refusing to mount system directory: $host_path (security policy)"
+      fi
+    done
+  fi
   
   # Check if path exists
   if [[ ! -e "$host_path" ]]; then
