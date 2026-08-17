@@ -122,11 +122,16 @@ Supports all Podman transports:
 
 ## Configuration
 
-Containers stored in `/var/lib/podspawn/` (override with `VAR_LIB_DIR` env var).
+Containers are stored in `/var/lib/podspawn/` (override with the `VAR_LIB_DIR`
+environment variable). Generated container names use the image repository path
+without its registry, so `docker.io/example/image` and
+`registry.example.com/example/image` both use `example_image`. The complete
+source reference remains recorded in the container configuration.
 
 ## Testing
 
 ```bash
+bash tests/container_name_test.sh
 bash tests/completion_test.sh
 ```
 
