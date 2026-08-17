@@ -51,7 +51,9 @@ jobs:
           echo "Package version: $PACKAGE_VERSION"
 
       - name: Run unit tests
-        run: bash tests/completion_test.sh
+        run: |
+          bash tests/container_name_test.sh
+          bash tests/completion_test.sh
 
       - name: Build deb package
         run: |

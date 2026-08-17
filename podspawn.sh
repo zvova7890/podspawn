@@ -119,7 +119,7 @@ Image/Container Reference:
     myorg/myapp:v1.0         Expands to docker://docker.io/myorg/myapp:v1.0
 
   <container> can be:
-    - Container name (sanitized image name)
+    - Container name (sanitized repository path without the registry)
     - Full image reference
     - repo:tag format
 
@@ -229,6 +229,20 @@ ref_parse() {
 
 sanitize() { echo "$1" | sed 's/[^A-Za-z0-9_.-]/_/g'; }
 tag_from_digest() { echo "sha-${1#sha256:}" | cut -c1-22; }
+
+repo_without_registry() {
+  local repo="$1" first
+
+  # The first path component is a registry when it looks like a host
+  # name/address. Keep unqualified namespace paths such as team/project/image
+  # intact.
+  [[ "$repo" == */* ]] || { printf '%s\n' "$repo"; return; }
+  first="${repo%%/*}"
+  case "$first" in
+    localhost|*.*|*:*) printf '%s\n' "${repo#*/}" ;;
+    *)                 printf '%s\n' "$repo" ;;
+  esac
+}
 
 machine_name_from_container() {
   local source="$1" name hash
@@ -389,7 +403,16 @@ setup_layout() {
 
   REPO="$name"
   [[ -n "$hostpath" ]] && REPO="$hostpath/$name"
-  CONTAINER_NAME="$(sanitize "$REPO")"
+  local name_repo="$REPO" strip_registry=0
+  case "$SRC_REF" in
+    docker://*)            strip_registry=1 ;;
+    containers-storage:*)  name_repo="${name_repo#containers-storage:}"; strip_registry=1 ;;
+    docker-daemon:*)       name_repo="${name_repo#docker-daemon:}"; strip_registry=1 ;;
+  esac
+  if (( strip_registry )); then
+    name_repo="$(repo_without_registry "$name_repo")"
+  fi
+  CONTAINER_NAME="$(sanitize "$name_repo")"
 
   META_DIR="${PODSPAWN_DIR%/}/$CONTAINER_NAME"
   ROOTFS_DIR="$META_DIR/rootfs"
@@ -846,4 +869,6 @@ main() {
   esac
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi
