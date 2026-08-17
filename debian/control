@@ -9,5 +9,6 @@ Homepage: https://github.com/zvova7890/podspawn
 Package: podspawn
 Architecture: all
 Depends: podman, usermode, systemd-container, ${misc:Depends}
+Recommends: bash-completion
 Description: Mock alternative based on OCI
  A wrapper around podman and systemd-nspawn to run OCI images in a chroot-like way.

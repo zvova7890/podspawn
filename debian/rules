@@ -5,10 +5,11 @@
 
 override_dh_auto_install:
 	# Create install directories
-	dh_installdirs etc/security/console.apps etc/pam.d usr/bin
+	dh_installdirs etc/security/console.apps etc/pam.d usr/bin usr/share/bash-completion/completions
 
 	# Install files
 	install -m 0644 etc/security/console.apps/podspawn debian/podspawn/etc/security/console.apps/podspawn
 	install -m 0644 etc/pam.d/podspawn debian/podspawn/etc/pam.d/podspawn
 	install -m 0755 podspawn.sh debian/podspawn/usr/bin/podspawn.sh
+	install -m 0644 completions/podspawn debian/podspawn/usr/share/bash-completion/completions/podspawn
 	ln -sf /usr/bin/consolehelper debian/podspawn/usr/bin/podspawn

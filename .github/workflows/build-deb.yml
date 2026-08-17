@@ -50,6 +50,9 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Package version: $PACKAGE_VERSION"
 
+      - name: Run unit tests
+        run: bash tests/completion_test.sh
+
       - name: Build deb package
         run: |
           # If you have a debian/ directory with package metadata
