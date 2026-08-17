@@ -1,0 +1,224 @@
+# Bash completion for podspawn.
+
+_podspawn_container_names()
+{
+    local base_dir=${VAR_LIB_DIR:-/var/lib/podspawn}
+    local config container_dir
+
+    for config in "$base_dir"/*/config; do
+        [[ -f $config ]] || continue
+        container_dir=${config%/config}
+        printf '%s\n' "${container_dir##*/}"
+    done
+}
+
+_podspawn_complete_containers()
+{
+    local current=$1
+    local container
+
+    while IFS= read -r container; do
+        [[ $container == "$current"* ]] && COMPREPLY+=("$container")
+    done < <(_podspawn_container_names)
+
+    return 0
+}
+
+_podspawn_complete_files()
+{
+    local current=$1
+    local file
+
+    while IFS= read -r file; do
+        COMPREPLY+=("$file")
+    done < <(compgen -f -- "$current")
+
+    compopt -o filenames
+}
+
+_podspawn_ltrim_colon_completions()
+{
+    local current=$1
+    local prefix reply
+    local i
+
+    [[ $current == *:* ]] || return
+    prefix=${current%"${current##*:}"}
+    for i in "${!COMPREPLY[@]}"; do
+        reply=${COMPREPLY[i]}
+        COMPREPLY[i]=${reply#"$prefix"}
+    done
+}
+
+_podspawn_complete_container_path()
+{
+    local current=$1
+    local container=${current%%:*}
+    local path=${current#*:}
+    local base_dir=${VAR_LIB_DIR:-/var/lib/podspawn}
+    local rootfs="$base_dir/$container/rootfs"
+    local host_path match relative candidate
+
+    [[ $current == *:* && -d $rootfs ]] || return
+
+    host_path="$rootfs/${path#/}"
+    while IFS= read -r match; do
+        relative=${match#"$rootfs"}
+        candidate="$container:$relative"
+        [[ -d $match ]] && candidate+=/
+        COMPREPLY+=("$candidate")
+    done < <(compgen -f -- "$host_path")
+
+    # Container paths do not exist in the host namespace, so Bash cannot
+    # determine by itself whether completion should continue inside a directory.
+    _podspawn_ltrim_colon_completions "$current"
+    compopt -o nospace
+}
+
+_podspawn_complete_cp_operand()
+{
+    local current=$1
+    local container
+
+    if [[ $current == *:* ]]; then
+        _podspawn_complete_container_path "$current"
+        return
+    fi
+
+    _podspawn_complete_files "$current"
+    while IFS= read -r container; do
+        container+=:
+        [[ $container == "$current"* ]] && COMPREPLY+=("$container")
+    done < <(_podspawn_container_names)
+
+    return 0
+}
+
+_podspawn()
+{
+    local cur prev cword
+    local -a words
+    if declare -F _init_completion >/dev/null; then
+        _init_completion -n : || return
+    else
+        words=("${COMP_WORDS[@]}")
+        cword=$COMP_CWORD
+        cur=${words[cword]}
+        prev=${words[cword-1]:-}
+    fi
+
+    local current=$cur
+    local previous=$prev
+    local command= command_index=0 word
+    local i
+    COMPREPLY=()
+
+    # Locate the command while allowing global options before it.
+    for ((i = 1; i < cword; i++)); do
+        word=${words[i]}
+        case $word in
+            -f|--force|-q|--quiet|-h|--help) ;;
+            *)
+                command=$word
+                command_index=$i
+                break
+                ;;
+        esac
+    done
+
+    if [[ -z $command ]]; then
+        mapfile -t COMPREPLY < <(compgen -W \
+            'init shell exec cp list info rm mount version help --force --quiet --help' \
+            -- "$current")
+        return
+    fi
+
+    case $command in
+        init)
+            if [[ $previous == --tag ]]; then
+                return
+            fi
+            if [[ $current == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W \
+                    '--tag --force --quiet --' -- "$current")
+            elif [[ $current == oci:* || $current == oci-archive:* ||
+                    $current == docker-archive:* || $current == dir:* ]]; then
+                local transport=${current%%:*}:
+                local path=${current#*:}
+                local match
+                while IFS= read -r match; do
+                    COMPREPLY+=("$transport$match")
+                done < <(compgen -f -- "$path")
+                _podspawn_ltrim_colon_completions "$current"
+                compopt -o nospace
+            else
+                mapfile -t COMPREPLY < <(compgen -W \
+                    'docker:// oci: oci-archive: docker-archive: dir: containers-storage: docker-daemon:' \
+                    -- "$current")
+                compopt -o nospace
+            fi
+            ;;
+
+        shell|exec)
+            if (( cword == command_index + 1 )); then
+                _podspawn_complete_containers "$current"
+                return
+            fi
+
+            case $previous in
+                --bind)
+                    _podspawn_complete_files "$current"
+                    return
+                    ;;
+                -w|--workdir)
+                    local container=${words[command_index+1]}
+                    _podspawn_complete_container_path "$container:$current"
+                    local reply
+                    for i in "${!COMPREPLY[@]}"; do
+                        reply=${COMPREPLY[i]#"$container:"}
+                        COMPREPLY[i]=$reply
+                    done
+                    return
+                    ;;
+                --hostname|--machine|--user|-e|--env|--nspawn-opt)
+                    return
+                    ;;
+            esac
+
+            if [[ $current == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W \
+                    '--bind --ephemeral --hostname --machine --user --root --workdir -w --env -e --no-env --nspawn-opt --force --quiet --' \
+                    -- "$current")
+            fi
+            ;;
+
+        cp)
+            if (( cword == command_index + 1 )); then
+                _podspawn_complete_cp_operand "$current"
+            elif (( cword == command_index + 2 )); then
+                local source=${words[command_index+1]}
+                if [[ $source == *:* ]]; then
+                    _podspawn_complete_files "$current"
+                else
+                    if [[ $current == *:* ]]; then
+                        _podspawn_complete_container_path "$current"
+                    else
+                        _podspawn_complete_containers "$current"
+                        for i in "${!COMPREPLY[@]}"; do
+                            COMPREPLY[i]+=':'
+                        done
+                        compopt -o nospace
+                    fi
+                fi
+            fi
+            ;;
+
+        info|rm|mount)
+            if (( cword == command_index + 1 )); then
+                _podspawn_complete_containers "$current"
+            fi
+            ;;
+    esac
+}
+
+complete -F _podspawn podspawn podspawn.sh

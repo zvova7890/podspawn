@@ -19,6 +19,7 @@ OCI container runtimes (Podman/Docker) require mounts and settings to be fixed a
 sudo install -m 755 podspawn.sh /usr/bin/podspawn.sh
 sudo install -m 644 pam-podspawn /etc/pam.d/podspawn
 sudo install -m 644 console.apps-podspawn /etc/security/console.apps/podspawn
+sudo install -Dm 644 completions/podspawn /usr/share/bash-completion/completions/podspawn
 sudo ln -sf /usr/bin/consolehelper /usr/bin/podspawn
 
 # Create podspawn group and add your user
@@ -122,6 +123,12 @@ Supports all Podman transports:
 ## Configuration
 
 Containers stored in `/var/lib/podspawn/` (override with `VAR_LIB_DIR` env var).
+
+## Testing
+
+```bash
+bash tests/completion_test.sh
+```
 
 PAM configuration allows running as root without explicit sudo through usermode's `consolehelper`.
 
