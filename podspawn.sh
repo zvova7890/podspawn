@@ -228,6 +228,21 @@ ref_parse() {
 }
 
 sanitize() { echo "$1" | sed 's/[^A-Za-z0-9_.-]/_/g'; }
+
+parse_cp_operand() {
+  local operand="${1:-}"
+  local container_var="${2:-}" path_var="${3:-}"
+  [[ "$operand" == *:* && -n "$container_var" && -n "$path_var" ]] || return 1
+
+  # The container reference may itself contain colons (a transport, registry
+  # port, or image tag), so the final colon separates it from the path.
+  local parsed_container="${operand%:*}"
+  local parsed_path="${operand##*:}"
+  [[ -n "$parsed_container" && -n "$parsed_path" ]] || return 1
+
+  printf -v "$container_var" '%s' "$parsed_container"
+  printf -v "$path_var" '%s' "$parsed_path"
+}
 tag_from_digest() { echo "sha-${1#sha256:}" | cut -c1-22; }
 
 repo_without_registry() {
@@ -639,11 +654,10 @@ cmd_cp() {
 
   require_root
 
-  # Determine direction: container:path or path
-  if [[ "$src" == *:* ]]; then
+  # Determine direction: container-reference:path or host path.
+  local container container_path
+  if parse_cp_operand "$src" container container_path; then
     # Copy from container to host
-    local container="${src%%:*}"
-    local container_path="${src#*:}"
     resolve_container "$container"
 
     msg "Copying from $container:$container_path to $dest"
@@ -671,10 +685,8 @@ cmd_cp() {
     # Move to final destination as user (with dropped privileges)
     drop_privileges mv "$tmpdir/$basename" "$dest"
 
-  elif [[ "$dest" == *:* ]]; then
+  elif parse_cp_operand "$dest" container container_path; then
     # Copy from host to container (this is safe, user can only copy their own files)
-    local container="${dest%%:*}"
-    local container_path="${dest#*:}"
     resolve_container "$container"
 
     msg "Copying from $src to $container:$container_path"
