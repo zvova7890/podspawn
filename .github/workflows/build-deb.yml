@@ -53,6 +53,7 @@ jobs:
       - name: Run unit tests
         run: |
           bash tests/container_name_test.sh
+          bash tests/cp_operand_test.sh
           bash tests/completion_test.sh
 
       - name: Build deb package
