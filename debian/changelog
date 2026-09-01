@@ -1,3 +1,9 @@
+podspawn (1.0.2-1) unstable; urgency=medium
+
+  * Release 1.0.2
+
+ -- Volodymyr Zolotopupov <zvova7890@gmail.com>  Wed, 02 Sep 2026 02:20:42 +0300
+
 podspawn (1.0.1-1) unstable; urgency=medium
 
   * Release 1.0.1
